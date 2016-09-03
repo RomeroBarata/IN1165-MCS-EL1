@@ -4,7 +4,7 @@ needs::needs(readr)
 ## Constants -----------------------------------
 DATA_PATH <- "data"
 R_PATH <- "R"
-CORES <- 1  # For parallel processing
+CORES <- 2  # For parallel processing
 
 ## Source files --------------------------------
 source(file.path(R_PATH, "bagging-functions.R"))
