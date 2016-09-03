@@ -33,12 +33,10 @@ generateBootstrapSamples <- function(m, b){
 #'  the out-of-bag error of the ensemble.
 
 bagging <- function(data, L = 100, cores = 1){
-  # In order to use the formula interface in the rpart function
+  # In order to use the formula interface of the rpart function
   names(data)[ncol(data)] <- "Class"
   
-  # Generate the bootstrap samples
-  m <- nrow(data)  # Number of examples
-  bootstrap_samples <- generateBootstrapSamples(m, L)
+  bootstrap_samples <- generateBootstrapSamples(nrow(data), L)
   
   trainDecisionTree <- function(bootstrap_sample){
     rpart::rpart(Class ~ ., data = data, subset = bootstrap_sample, 
@@ -49,7 +47,8 @@ bagging <- function(data, L = 100, cores = 1){
   
   makePreds <- function(model, x, bootstrap_sample){
     preds <- rep(NA, nrow(x))
-    preds[-bootstrap_sample] <- predict(model, x[-bootstrap_sample, ], type = "class")
+    preds[-bootstrap_sample] <- predict(model, x[-bootstrap_sample, ], 
+                                        type = "class")
     preds
   }
   preds <- parallel::mcMap(makePreds, 
@@ -57,15 +56,18 @@ bagging <- function(data, L = 100, cores = 1){
                            list(subset(data, select = -Class)), 
                            bootstrap_samples, 
                            mc.cores = cores)
+  # Instead of having their original factor values, the predictions were 
+  # coerced to their integer representation.
   lvls <- levels(data$Class)
-  preds <- lapply(preds, function(x) ifelse(x == 1, lvls[1],
-                                            ifelse(x == 2, lvls[2], NA)))
+  lookup <- c(`1` = lvls[1], `2` = lvls[2], `NA` = NA)
+  # Coerce back to the original factor values
+  preds <- lapply(preds, function(x) lookup[x])
   preds <- matrix(unlist(preds, use.names = FALSE), ncol = L)
-  colnames(preds) <- paste("Tree", 1:L)
+  colnames(preds) <- paste("Tree", 1:L, sep = "-")
 
   majorityVote <- function(x){
     x <- x[!is.na(x)]
-    if (length(x) == 0) return(NA)
+    if (length(x) == 0) return(NA)  # It was present in all bootstrap samples
     names(which.max(table(x)))
   }
   oob_preds <- apply(preds, 1, majorityVote)
