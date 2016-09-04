@@ -8,6 +8,7 @@ CORES <- 2  # For parallel processing
 
 ## Source files --------------------------------
 source(file.path(R_PATH, "bagging-functions.R"))
+source(file.path(R_PATH, "cv-functions.R"))
 source(file.path(R_PATH, "diversity-functions.R"))
 
 ## Read data into the workspace ----------------
