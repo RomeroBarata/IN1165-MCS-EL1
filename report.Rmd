@@ -1,0 +1,96 @@
+---
+title: "2016.2 Multiple Classifier Systems - Exercise List 1"
+author: "Romero Barata"
+date: "September 4, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::read_chunk("R/diversity-functions.R", labels = c("Q2"), 
+                  from = c(82), to = c(152))
+```
+## Question 01
+
+## Question 02
+```{r Q2}
+```
+The _Measure of "difficulty"_ computes a measure of diversity using the histogram of the number of classifiers that correctly classified input examples. 
+
+Define `N = # of examples`, `L = # of classifiers`, and `f(i) = # of examples correctly classified by i classifiers`. The proposed measure of diversity employs the same histogram but works in the following way:
+
+1. Remove all the examples that were either misclassified or correctly classified by all the classifiers.
+2. Compute the measure in the following way:
+  + If `L` is even: f(L/2) + (1/2) * (f(L/2 - 1) + f(L/2 + 1)) + ... + (1 / (L/2)) * (f(1) + f(L - 1))
+  + If `L` is odd: (f(floor(L/2)) + f(ceiling(L/2))) + (1/2) * (f(floor(L/2) - 1) + f(ceiling(L/2) + 1)) + ... + (1/floor(L/2)) * (f(1) + f(L-1))
+3. Divide the previous sum by `N`.
+
+It ranges from 0 to 1, with 0 representing minimum diversity and 1 represent maximum diversity.
+
+The rationale behind the proposed measure is that high diversity is achieved when half (or approximately half) of the classifiers correctly classify an input example and the other half disagrees. Hence the highest weight in the summation is given to this group. Also, if all the classifiers give the same output for an input example, there is no diversity in their outputs and therefore these examples are removed in the first step.
+
+To exemplify the measure, we compare it against the (scaled) _Measure of "difficulty"_ for two different scenarios. For the first scenario we have `N = 100`, `L = 7`, and each classifier has an individual accuracy `p = 0.6`. The second scenario differs only by the classifiers' individual accuracy, which is `p = 0.8`.
+
+```{r, echo=FALSE, out.height='60%', out.width='50%'}
+library(ggplot2)
+set.seed(1234)
+sim1 <- replicate(2, simulatePredictionsData(100, 0.6, 7), simplify = FALSE)
+f <- function(x){
+  x <- cbind(0:7, table(factor(x$correct_distribution, levels = 0:7)))
+  x <- as.data.frame(x)
+  names(x) <- c("L", "value")
+  x[["L"]] <- as.factor(x[["L"]])
+  x
+}
+
+dm11 <- difficultMeasure(sim1[[1]]$predictions, sim1[[1]]$y, scale = TRUE)
+om11 <- omegaMeasure(sim1[[1]]$predictions, sim1[[1]]$y)
+
+dm12 <- difficultMeasure(sim1[[2]]$predictions, sim1[[2]]$y, scale = TRUE)
+om12 <- omegaMeasure(sim1[[2]]$predictions, sim1[[2]]$y)
+
+
+sim1 <- lapply(sim1, f)
+ggplot(sim1[[1]], aes(x = L, y = value)) + geom_bar(stat = "identity") + theme_bw() + labs(x = "Number L correct", y = "Number of occurrences")
+ggplot(sim1[[2]], aes(x = L, y = value)) + geom_bar(stat = "identity") + theme_bw() + labs(x = "Number L correct", y = "Number of occurrences")
+```
+
+In the above two simulations (`p = 0.6`) we had the values `r dm11` and `r dm12` for the _Measure of "difficulty"_, and the values `r om11` and `r om12` for the proposed measured. 
+
+```{r, echo=FALSE, out.height='60%', out.width='50%'}
+set.seed(1234)
+sim2 <- replicate(2, simulatePredictionsData(100, 0.8, 7), simplify = FALSE)
+
+dm21 <- difficultMeasure(sim2[[1]]$predictions, sim2[[1]]$y, scale = TRUE)
+om21 <- omegaMeasure(sim2[[1]]$predictions, sim2[[1]]$y)
+
+dm22 <- difficultMeasure(sim2[[2]]$predictions, sim2[[2]]$y, scale = TRUE)
+om22 <- omegaMeasure(sim2[[2]]$predictions, sim2[[2]]$y)
+
+sim2 <- lapply(sim2, f)
+ggplot(sim2[[1]], aes(x = L, y = value)) + geom_bar(stat = "identity") + theme_bw() + labs(x = "Number L correct", y = "Number of occurrences")
+ggplot(sim2[[2]], aes(x = L, y = value)) + geom_bar(stat = "identity") + theme_bw() + labs(x = "Number L correct", y = "Number of occurrences")
+```
+
+For the second scenario, we had the values `r dm21` and `r dm22` for the _Measure of "difficulty"_, and the values `r om21` and `r om22` for the proposed measure.
+
+For the first scenario, the proposed measure agreed with the _Measure of "difficulty"_, identifying as having a higher diversity the second simulation. On the other hand, for the second scenario, the proposed measure identified both simulations as having the same diversity, while the _Measure of "difficulty"_ computed a slightly higher diversity for the second simulation.
+
+## Question 03
+For this question, the [Credit Approval Data Set](http://archive.ics.uci.edu/ml/datasets/Credit+Approval) was employed. It is a binary classification problem, containing $690$ examples described by $15$ attributes. The attributes are of mixed types and there a few missing values.
+
+The base classifier for the bagging procedure was a Decision Tree. It was the version implemented in the `R` language `rpart` package. The parameters used were the defaults ones, apart from the `split` parameter which was set to `information gain`. All the parameters' default values and their definitions are available in the [documentation](https://cran.r-project.org/web/packages/rpart/rpart.pdf).
+
+In order to analyse how the number of classifiers `L` affects the performance of the _Bagging_ algorithm, the following experimentation was conducted:
+
+1. Setup a range of values for `L`.
+2. For each value of `L` perform a five-fold cross-validated procedure repeated two times, computing at each round the average individual accuracy, the ensemble accuracy, five pairwise diversity measures, and five non-pairwise diversity measures. For each performance measure computed take the mean value.
+
+In particular, the range of values for `L` was `10, 20, ..., 100`. The five pairwise diversity measures were: Correlation, Q Statistic, Pairwise Kappa, Disagreement Measure, and the Double-Fault Measure. The five non-pairwise diversity measures were: Entropy, KW, Non-Pairwise Kappa, Measure of Difficulty, and the Omega Measure (this is the measure proposed in Question 02).
+
+The following graph shows the results. If reading this report from the .html version (recommended), interactivity is enabled for this graph. It means you can hover the mouse on the graph and see the real values, zoom by selecting an area of the graph, and hide/show performance measures clicking on it's name in the legend.
+
+ADD GRAPH
+
+Increasing the size of the ensemble does not seem to affect the ensemble accuracy and the average individual accuracy. A possible explanation for this might be the Decision Tree's default parameters. For instance, the default parameters when used to train the Decision Tree on the employed data set, may make the individual Trees very similar independently of the bootstrap sample used to train it. Nevertheless, it is notable that the accuracy of the ensemble (using majority voting) is always higher than the average of the individual classifiers.
+
