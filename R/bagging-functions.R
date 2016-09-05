@@ -13,7 +13,7 @@
 #'  bootstrap sample.
 
 generateBootstrapSamples <- function(m, b){
-  replicate(b, sample(m, size = m, replace = TRUE), simplify = FALSE)
+  replicate(b, sample(m, replace = TRUE), simplify = FALSE)
 }
 
 #' Generate an ensemble of trees through the bagging algorithm.
@@ -38,12 +38,12 @@ bagging <- function(data, L = 100, cores = 1){
   
   bootstrap_samples <- generateBootstrapSamples(nrow(data), L)
   
-  trainDecisionTree <- function(bootstrap_sample){
+  decisionTree <- function(bootstrap_sample){
     rpart::rpart(Class ~ ., data = data, subset = bootstrap_sample,
                  method = "class", parms = list(split = "information"))
   }
   bagging_models <- parallel::mclapply(bootstrap_samples,
-                                       trainDecisionTree, mc.cores = cores)
+                                       decisionTree, mc.cores = cores)
   names(bagging_models) <- paste("Tree", 1:L, sep = "-")
   structure(list(models = bagging_models, 
                  bootstrap_samples = bootstrap_samples), 
