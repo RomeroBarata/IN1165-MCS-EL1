@@ -17,7 +17,8 @@ createStratifiedPartitions <- function(y, folds = 10, repeats = 5){
 }
 
 cvTrain <- function(data, method, method_args = list(), 
-                    folds, repeats, cores, ...){
+                    folds, repeats, cores, seed = NULL, ...){
+  if (!is.null(seed)) set.seed(seed)
   partitions <- createStratifiedPartitions(data[[ncol(data)]], 
                                            folds = folds, 
                                            repeats = repeats)
@@ -26,9 +27,8 @@ cvTrain <- function(data, method, method_args = list(),
                              method = list(method), 
                              method_args = list(method_args), 
                              partition = partitions, 
-                             cores = cores, 
-                             mc.cores = cores, 
-                             ...)
+                             cores = list(cores), 
+                             mc.cores = cores)
 }
 
 train <- function(data, method, method_args = list(), partition, cores, ...){
@@ -59,17 +59,18 @@ train <- function(data, method, method_args = list(), partition, cores, ...){
     non_pairwise_measures <- nonPairwiseMeasures(predictions, y)
     # Ensemble error
     maj_vote <- apply(predictions, 1, function(x) names(which.max(table(x))))
-    ensemble_error <- 1 - mean(maj_vote == y)
+    ensemble_acc <- mean(maj_vote == y)
     
+    # Assemble results
     if (i == 1){
       results <- rbind(c(avg_ind_acc = avg_individual_acc, 
-                         avg_pairwise_measures, non_pairwise_measures, 
-                         ensemble_error = ensemble_error))
+                         ensemble_acc = ensemble_acc, 
+                         avg_pairwise_measures, non_pairwise_measures))
     } else{
       results <- rbind(results, 
                        c(avg_ind_acc = avg_individual_acc, 
-                         avg_pairwise_measures, non_pairwise_measures, 
-                         ensemble_error = ensemble_error))
+                         ensemble_acc = ensemble_acc, 
+                         avg_pairwise_measures, non_pairwise_measures))
     }
   }
   results
