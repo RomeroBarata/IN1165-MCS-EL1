@@ -1,6 +1,4 @@
 oracleMatrix <- function(predictions, ground_truth){
-  # idx <- complete.cases(predictions)
-  # predictions <- predictions[idx, ]
   d1 <- predictions[, 1] == ground_truth
   d2 <- predictions[, 2] == ground_truth
   
