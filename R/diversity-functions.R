@@ -79,20 +79,29 @@ nonPairwiseInterraterAgreement <- function(predictions, ground_truth){
   1 - (L * KW(predictions, ground_truth)) / ((L - 1) * p_hat * (1 - p_hat))
 }
 
-difficultMeasure <- function(predictions, ground_truth){
+difficultMeasure <- function(predictions, ground_truth, scale = FALSE){
   N <- nrow(predictions)
   L <- ncol(predictions)
   num_correct <- vapply(1:N, 
-                        function(i) sum(predictions[i, ] == ground_truth), 
+                        function(i) sum(predictions[i, ] == ground_truth[i]), 
                         numeric(1))
-  var(num_correct / L)
+  if (scale == TRUE){
+    f <- function(j){
+      preds <- predictions[, j] == ground_truth
+      mean(preds, na.rm = TRUE)
+    }
+    p_hat <- mean(sapply(1:L, f))
+    var(num_correct / L) / (p_hat * (1 - p_hat))
+  } else{
+    var(num_correct / L)  
+  }
 }
 
 omegaMeasure <- function(predictions , ground_truth){
   N <- nrow(predictions)
   L <- ncol(predictions)
   num_correct <- vapply(1:N, 
-                        function(i) sum(predictions[i, ] == ground_truth), 
+                        function(i) sum(predictions[i, ] == ground_truth[i]), 
                         numeric(1))
   num_correct <- num_correct[num_correct > 0 & num_correct < L]
   correct_distribution <- table(factor(num_correct, levels = 1:(L - 1)))
@@ -110,7 +119,7 @@ omegaMeasure <- function(predictions , ground_truth){
     b <- 1:floor(L / 2)
     idx <- c(a, b)
     for (i in 1:(L - 1)){
-      total <- total + (1 / idx[i]) * correct_distribution[i]
+      total <- total + (1 / idx[i]) * correct_distribution[[i]]
     }
   }
   total / N
@@ -120,6 +129,24 @@ nonPairwiseMeasures <- function(predictions, ground_truth){
   c(entropy = entropyMeasure(predictions, ground_truth), 
     KW = KW(predictions, ground_truth), 
     kappa = nonPairwiseInterraterAgreement(predictions, ground_truth), 
-    difficultMeasure = difficultMeasure(predictions, ground_truth), 
+    difficultMeasure = difficultMeasure(predictions, ground_truth, TRUE), 
     omega = omegaMeasure(predictions, ground_truth))
+}
+
+simulatePredictionsData <- function(N, p, L){
+  ground_truth <- sample(c("+", "-"), size = N, replace = TRUE)
+  
+  corrupt_size <- round((1 - p) * N)
+  predictions <- replicate(L, {
+    corrupt <- sample(N, corrupt_size)
+    gt_copy <- ground_truth
+    gt_copy[corrupt] <- ifelse(gt_copy[corrupt] == "+", "-", "+")
+    gt_copy
+  })
+  
+  correct_distribution <- 
+    sapply(1:N, function(i) sum(predictions[i, ] == ground_truth[i]))
+  
+  list(predictions = predictions, y = ground_truth, 
+       correct_distribution = correct_distribution)
 }
