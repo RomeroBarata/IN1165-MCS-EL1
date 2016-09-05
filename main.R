@@ -1,5 +1,6 @@
 ## Load packages -------------------------------
-needs::needs(readr, ggplot2)
+if (!require(needs)) install.packages("needs")
+needs::needs(readr, plotly, RColorBrewer, tidyr)
 
 ## Constants -----------------------------------
 DATA_PATH <- "data"
@@ -41,14 +42,12 @@ for (i in seq_along(L_range)){
 }
 
 ## Assemble the results ------------------------
-f <- function(i){
-  rslt <- rbind(results[[i]][[1]], results[[i]][[2]])
-  rslt <- rbind(colMeans(rslt))
-  cbind(as.data.frame(rslt), data.frame(L = L_range[i]))
-}
-results <- lapply(1:length(results), f)
+results <- lapply(results, rbindList)
+results <- lapply(results, function(x) rbind(colMeans(x)))
+results <- lapply(seq_along(L_range), 
+                  function(i) cbind(results[[i]], data.frame(L = L_range[i])))
 results <- rbindList(results)
-results_tidy <- tidyr::gather(results, measure, value, -L)
+results_tidy <- gather(results, measure, value, -L)
 results_tidy[["measure"]] <- factor(results_tidy[["measure"]], 
                                     levels = c("avg_ind_acc", "ensemble_acc", 
                                                "correlation", "Q", 
@@ -66,8 +65,14 @@ results_tidy[["measure"]] <- factor(results_tidy[["measure"]],
                                                "Omega"))
 
 ## Plot the results ------------------------------
-my_theme <- theme_bw()
-p <- ggplot(results_tidy, aes(x = L, y = value, colour = measure)) +
-  geom_line() + geom_point() + my_theme + ylab("Value") + 
-  scale_colour_discrete(name = "Measure")
-pply <- plotly::ggplotly(p)
+# Old plots but still nice =D
+# my_theme <- theme_bw()
+# p <- ggplot(results_tidy, aes(x = L, y = value, colour = measure)) +
+#   geom_line() + geom_point() + my_theme + ylab("Value") + 
+#   scale_colour_discrete(name = "Measure")
+# pply <- ggplotly(p)
+
+# Final plot
+pal <- brewer.pal(nlevels(results_tidy$measure), "Paired")
+pl <- plot_ly(results_tidy, x = L, y = value, color = measure, colors = pal)
+pl <- layout(pl, yaxis = list(title = "Value"))
