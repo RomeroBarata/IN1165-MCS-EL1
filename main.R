@@ -9,6 +9,7 @@ CORES <- 2  # For parallel processing
 SEED <- 14563  # For a fair comparison between models
 FOLDS <- 5
 REPEATS <- 2
+L_RANGE <- seq(from = 10, to = 100, by = 10)
 
 ## Source files --------------------------------
 source(file.path(R_PATH, "bagging-functions.R"))
@@ -31,12 +32,11 @@ ca_data[] <- lapply(ca_data,
                     function(x) if (is.character(x)) as.factor(x) else x)
 
 ## Cross-validation process --------------------
-L_range <- seq(10, 100, by = 10)
-results <- vector(mode = "list", length = length(L_range))
-for (i in seq_along(L_range)){
+results <- vector(mode = "list", length = length(L_RANGE))
+for (i in seq_along(L_RANGE)){
   results[[i]] <- cvTrain(ca_data, 
                           method = "bagging", 
-                          method_args = list(L = L_range[i], cores = CORES), 
+                          method_args = list(L = L_RANGE[i], cores = CORES), 
                           folds = FOLDS, repeats = REPEATS, 
                           cores = CORES, seed = SEED)
 }
@@ -44,8 +44,8 @@ for (i in seq_along(L_range)){
 ## Assemble the results ------------------------
 results <- lapply(results, rbindList)
 results <- lapply(results, function(x) rbind(colMeans(x)))
-results <- lapply(seq_along(L_range), 
-                  function(i) cbind(results[[i]], data.frame(L = L_range[i])))
+results <- lapply(seq_along(L_RANGE), 
+                  function(i) cbind(results[[i]], data.frame(L = L_RANGE[i])))
 results <- rbindList(results)
 results_tidy <- gather(results, measure, value, -L)
 results_tidy[["measure"]] <- factor(results_tidy[["measure"]], 
