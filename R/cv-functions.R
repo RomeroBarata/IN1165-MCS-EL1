@@ -1,27 +1,25 @@
-createStratifiedPartitions <- function(y, folds = 10, repeats = 5){
+createStratifiedPartition <- function(y, folds = 10){
   if (is.data.frame(y)) y <- unlist(y, use.names = FALSE)
   classes_dist <- table(y)
-  stratified_partitions <- list()
-  for (i in seq_len(repeats)){
-    partition <- vector(mode = "numeric", length = length(y))
-    for(j in seq_along(classes_dist)){
-      max_sample <- ceiling(classes_dist[j] / folds) * folds
-      folds_idx <- rep(1:folds, length.out = max_sample)
-      class_partition <- sample(folds_idx)[1:classes_dist[j]]
-      class_id <- names(classes_dist)[j]
-      partition[y == class_id] <- class_partition
-    }
-    stratified_partitions[[paste("rep", i, sep = "-")]] <- partition
+
+  partition <- vector(mode = "numeric", length = length(y))
+  for(i in seq_along(classes_dist)){
+    max_sample <- ceiling(classes_dist[i] / folds) * folds
+    folds_idx <- rep(1:folds, length.out = max_sample)
+    class_partition <- sample(folds_idx)[1:classes_dist[i]]
+    class_id <- names(classes_dist)[i]
+    partition[y == class_id] <- class_partition
   }
-  stratified_partitions
+  partition
 }
 
 cvTrain <- function(data, method, method_args = list(), 
                     folds, repeats, cores, seed = NULL, ...){
   if (!is.null(seed)) set.seed(seed)
-  partitions <- createStratifiedPartitions(data[[ncol(data)]], 
-                                           folds = folds, 
-                                           repeats = repeats)
+  partitions <- replicate(repeats, 
+                          createStratifiedPartition(data[[ncol(data)]], folds), 
+                          simplify = FALSE)
+  
   results <- parallel::mcMap(train, 
                              data = list(data), 
                              method = list(method), 
